@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import re
-import requests
 import sys
 import tarfile
 
@@ -12,26 +11,27 @@ from multiprocessing import Pool
 
 logger = logging.getLogger('sumGram.sumgram')
 
+
 def genericErrorInfo(slug=''):
     exc_type, exc_obj, exc_tb = sys.exc_info()
     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    
-    errMsg = fname + ', ' + str(exc_tb.tb_lineno)  + ', ' + str(sys.exc_info())
+
+    errMsg = fname + ', ' + str(exc_tb.tb_lineno) + ', ' + str(sys.exc_info())
     logger.error(errMsg + slug)
 
     return errMsg
 
+
 def getStopwordsSet(frozenSetFlag=False):
-    
     stopwords = getStopwordsDict()
-    
-    if( frozenSetFlag ):
+
+    if (frozenSetFlag):
         return frozenset(stopwords.keys())
     else:
         return set(stopwords.keys())
 
-def getStopwordsDict():
 
+def getStopwordsDict():
     stopwordsDict = {
         "a": True,
         "about": True,
@@ -324,42 +324,42 @@ def getStopwordsDict():
         "yourself": True,
         "yourselves": True
     }
-    
+
     return stopwordsDict
 
-def sortDctByKey(dct, key, reverse=True):
 
+def sortDctByKey(dct, key, reverse=True):
     key = key.strip()
-    if( len(dct) == 0 or len(key) == 0 ):
+    if (len(dct) == 0 or len(key) == 0):
         return []
 
     return sorted(dct.items(), key=lambda x: x[1][key], reverse=reverse)
 
-def dumpJsonToFile(outfilename, dictToWrite, indentFlag=True, extraParams=None):
 
-    if( extraParams is None ):
+def dumpJsonToFile(outfilename, dictToWrite, indentFlag=True, extraParams=None):
+    if (extraParams is None):
         extraParams = {}
 
     extraParams.setdefault('verbose', True)
 
     try:
         outfile = open(outfilename, 'w')
-        
-        if( indentFlag ):
-            json.dump(dictToWrite, outfile, ensure_ascii=False, indent=4)#by default, ensure_ascii=True, and this will cause  all non-ASCII characters in the output are escaped with \uXXXX sequences, and the result is a str instance consisting of ASCII characters only. Since in python 3 all strings are unicode by default, forcing ascii is unecessary
+
+        if (indentFlag):
+            json.dump(dictToWrite, outfile, ensure_ascii=False,
+                      indent=4)  # by default, ensure_ascii=True, and this will cause  all non-ASCII characters in the output are escaped with \uXXXX sequences, and the result is a str instance consisting of ASCII characters only. Since in python 3 all strings are unicode by default, forcing ascii is unecessary
         else:
             json.dump(dictToWrite, outfile, ensure_ascii=False)
 
         outfile.close()
 
-        if( extraParams['verbose'] ):
+        if (extraParams['verbose']):
             logger.info('\twriteTextToFile(), wrote: ' + outfilename)
     except:
         genericErrorInfo('\n\terror: outfilename: ' + outfilename)
 
 
 def getTextFromGZ(path):
-    
     try:
         with gzip.open(path, 'rb') as f:
             return f.read().decode('utf-8')
@@ -368,8 +368,8 @@ def getTextFromGZ(path):
 
     return ''
 
-def readTextFromTar(filename, addDetails=True):
 
+def readTextFromTar(filename, addDetails=True):
     payload = []
     try:
         tar = tarfile.open(filename, 'r:*')
@@ -380,16 +380,16 @@ def readTextFromTar(filename, addDetails=True):
                 try:
                     f = tar.extractfile(tarinfo)
                     text = f.read()
-                    
-                    if( tarinfo.name.endswith('.gz') ):
+
+                    if (tarinfo.name.endswith('.gz')):
                         text = gzip.decompress(text)
-                    
+
                     text = text.decode('utf-8')
-                    if( text != '' ):
-                        if( addDetails is True ):
+                    if (text != ''):
+                        if (addDetails is True):
                             extra = {'src': filename}
-                            text = getTextDetails( filename=os.path.basename(tarinfo.name), text=text, extra=extra )
-                        
+                            text = getTextDetails(filename=os.path.basename(tarinfo.name), text=text, extra=extra)
+
                         payload.append(text)
 
                 except UnicodeDecodeError as e:
@@ -403,19 +403,19 @@ def readTextFromTar(filename, addDetails=True):
 
     return payload
 
-def readTextFromFile(infilename):
 
+def readTextFromFile(infilename):
     try:
         with open(infilename, 'r') as infile:
             return infile.read()
     except:
-        genericErrorInfo( '\n\treadTextFromFile(), error filename: ' + infilename )
+        genericErrorInfo('\n\treadTextFromFile(), error filename: ' + infilename)
 
     return ''
 
+
 def getTextDetails(filename, text, extra=None):
-    
-    if( extra is None ):
+    if (extra is None):
         extra = {}
 
     payload = {'filename': filename, 'text': text}
@@ -425,193 +425,107 @@ def getTextDetails(filename, text, extra=None):
 
     return payload
 
-def readTextFromFilesRecursive(files, addDetails=True, curDepth=0, maxDepth=0):
 
-    if( isinstance(files, str) ):
+def readTextFromFilesRecursive(files, addDetails=True, curDepth=0, maxDepth=0):
+    if (isinstance(files, str)):
         files = [files]
 
-    if( isinstance(files, list) is False ):
+    if (isinstance(files, list) is False):
         return []
 
-    if( maxDepth != 0 and curDepth > maxDepth ):
+    if (maxDepth != 0 and curDepth > maxDepth):
         return []
 
     result = []
     for f in files:
 
         f = f.strip()
-        
-        if( f.endswith('.tar') or f.endswith('.tar.gz') ):
+
+        if (f.endswith('.tar') or f.endswith('.tar.gz')):
             result += readTextFromTar(f, addDetails=addDetails)
 
-        elif( f.endswith('.gz') ):
-            
+        elif (f.endswith('.gz')):
+
             text = getTextFromGZ(f)
-            if( text != '' ):
-                if( addDetails is True ):
+            if (text != ''):
+                if (addDetails is True):
                     extra = {'depth': curDepth}
                     text = getTextDetails(filename=f, text=text, extra=extra)
-                
+
                 result.append(text)
 
-        elif( os.path.isfile(f) ):
+        elif (os.path.isfile(f)):
 
             text = readTextFromFile(f)
-            if( text != '' ):
-                if( addDetails is True ):
+            if (text != ''):
+                if (addDetails is True):
                     extra = {'depth': curDepth}
                     text = getTextDetails(filename=f, text=text, extra=extra)
-                
+
                 result.append(text)
-        
-        elif( os.path.isdir(f) ):
-    
-            if( f.endswith('/') is False ):
+
+        elif (os.path.isdir(f)):
+
+            if (f.endswith('/') is False):
                 f = f + '/'
-            
+
             secondLevelFiles = os.listdir(f)
             secondLevelFiles = [f + f2 for f2 in secondLevelFiles]
-            result += readTextFromFilesRecursive(secondLevelFiles, addDetails=addDetails, curDepth=curDepth+1, maxDepth=maxDepth)
+            result += readTextFromFilesRecursive(secondLevelFiles, addDetails=addDetails, curDepth=curDepth + 1,
+                                                 maxDepth=maxDepth)
 
     return result
-#nlp server - start
 
-def nlpIsServerOn(addr='http://localhost:9000'):
 
-    try:
-        response = requests.head(addr)
-        
-        if( response.status_code == 200 ):
-            return True
-        else:
-            return False
+def change_format(nlp_docs):
+    sentences = []
 
-    except:
-        genericErrorInfo()
+    def create_tok_obj(token):
+        token_obj = {}
+        token_obj['tok'] = token.text
+        token_obj['pos'] = token.tag_
+        token_obj['lemma'] = token.lemma_
+        return token_obj
 
-    return False
+    def create_sent_obj(sent):
+        sent_obj = {}
+        sent_obj['sentence'] = str(sent)
+        sent_obj['lemmatized_sentence'] = sent.lemma_
+        for token in sent:
+            sent_obj.setdefault('tokens', []).append(create_tok_obj(token))
+        return sent_obj
 
-def nlpSentenceAnnotate(text, parsed={}, host='localhost', port='9000'):
+    for sent in nlp_docs.sents:
+        sentences.append(create_sent_obj(sent))
 
-    payload = { 'sentences': [] }
-    if( text == '' ):
-        return payload
+    return {'text': str(nlp_docs), 'sentences': sentences}
 
-    #see annotators: https://stanfordnlp.github.io/CoreNLP/annotators.html
-    #lemma annotator also does: tokenize, ssplit, pos
-    request = host + ':' + port + '/?properties={"annotators":"lemma","outputFormat":"json"}'
-    
-    try:
-        if( len(parsed) == 0 ):
-            parsed = check_output(['wget', '-q', '-O', '-', '--post-data', text, request])
-
-        parsed = parsed.decode('utf-8')
-        parsed = json.loads( parsed )
-        #dumpJsonToFile( 'ner_output.json', parsed )#for debugging 
-
-        if( 'sentences' not in parsed ):
-            return []
-
-        for sentence in parsed['sentences']:
-
-            if( 'tokens' not in sentence ):
-                continue
-            
-            payload['sentences'].append({
-                'tokens': [],
-                'sentence': ''
-            })
-
-            singleSentence = ''
-            lemmatizedSentence = ''
-            sentenceSize = len(sentence['tokens'])
-
-            for i in range( sentenceSize ):
-
-                tok = sentence['tokens'][i]
-                payload['sentences'][-1]['tokens'].append({
-                    'pos': tok['pos'],
-                    'tok': tok['originalText'],
-                    'lemma': tok['lemma']
-                })
-
-                lemmatizedSentence = lemmatizedSentence + tok['lemma'] + tok['after']
-                #singleSentence = singleSentence + tok['originalText'] + tok['after']
-            
-            if( sentenceSize != 0 ):
-                
-                st = sentence['tokens'][0]['characterOffsetBegin']
-                en = sentence['tokens'][sentenceSize - 1]['characterOffsetBegin'] + 1
-                payload['sentences'][-1]['sentence'] = text[ st:en ]
-                
-                #payload['sentences'][-1]['sentence'] = singleSentence.strip()
-                payload['sentences'][-1]['lemmatized_sentence'] = lemmatizedSentence.strip()
-    except CalledProcessError:
-        logger.error('ERROR: subprocess.CalledProcessError')
-    except:
-        genericErrorInfo()
-
-    return payload
-
-def nlpServerStartStop(msg='start', host='localhost', port='9000'):
-
-    if( msg == 'start' ):
-        try:
-            if( nlpIsServerOn() ):
-                logger.info('\tCoreNLP Server already on - no-op')
-            else:
-                logger.info('\tStarting CoreNLP Server')
-                #docker run --rm -d -p 9000:9000 --name stanfordcorenlp anwala/stanfordcorenlp
-                check_output([
-                    'docker', 
-                    'run', 
-                    '--rm', 
-                    '-d', 
-                    '-p', 
-                    port + ':9000', 
-                    '--name',
-                    'stanfordcorenlp',
-                    'anwala/stanfordcorenlp'
-                ])
-                
-                #warm up server (preload libraries, so subsequent responses are quicker)
-                nlpSentenceAnnotate(text='A quick brown fox jumped over the lazy dog', host=host, port=port)
-        except:
-            genericErrorInfo()
-    elif( msg == 'stop' ):
-        try:
-            check_output(['docker', 'rm', '-f', 'stanfordcorenlp'])
-        except:
-            genericErrorInfo()
-
-#nlp server - end
 
 def overlapFor2Sets(firstSet, secondSet):
-
     intersection = float(len(firstSet & secondSet))
     minimum = min(len(firstSet), len(secondSet))
 
-    if( minimum != 0 ):
-        return  round(intersection/minimum, 4)
+    if (minimum != 0):
+        return round(intersection / minimum, 4)
     else:
         return 0
 
+
 def parallelProxy(job):
-    
     output = job['func'](**job['args'])
 
-    if( 'print' in job ):
-        if( len(job['print']) != 0 ):
+    if ('print' in job):
+        if (len(job['print']) != 0):
             logger.info(job['print'])
 
     return {'input': job, 'output': output, 'misc': job['misc']}
 
-def parallelTask(jobsLst, threadCount=5):
 
-    if( len(jobsLst) == 0 ):
+def parallelTask(jobsLst, threadCount=5):
+    if (len(jobsLst) == 0):
         return []
 
-    if( threadCount < 2 ):
+    if (threadCount < 2):
         threadCount = 2
 
     try:
@@ -626,70 +540,69 @@ def parallelTask(jobsLst, threadCount=5):
 
     return resLst
 
+
 def phraseTokenizer(phrase):
     phrase = phrase.replace('\n', ' ')
     return re.split("[^a-zA-Z0-9.'’]", phrase)
 
-def isMatchInOrder(keyLst, parentLst):
 
-    if( len(keyLst) < 2 or len(parentLst) == 0 ):
+def isMatchInOrder(keyLst, parentLst):
+    if (len(keyLst) < 2 or len(parentLst) == 0):
         return False
 
     indices = []
     for key in keyLst:
-        
-        if( key not in parentLst ):
+
+        if (key not in parentLst):
             continue
 
         indx = parentLst.index(key)
         indices.append(indx)
 
-    if( sorted(indices) == indices ):
+    if (sorted(indices) == indices):
         return True
     else:
         return False
 
-def rmStopwords(sent, stopwords):
 
+def rmStopwords(sent, stopwords):
     sent = sent.strip()
-    if( sent == '' ):
+    if (sent == ''):
         return ''
-    
-    if( len(stopwords) == 0 ):
+
+    if (len(stopwords) == 0):
         return sent
 
     sent = sent.split(' ')
     newSent = []
     for tok in sent:
-        
-        if( tok.lower() in stopwords ):
+
+        if (tok.lower() in stopwords):
             continue
 
         newSent.append(tok)
 
     return newSent
 
+
 def parallelGetTxt(folder, threadCount=5):
-    
     folder = folder.strip()
-    if( folder == '' ):
+    if (folder == ''):
         return []
 
-    if( folder[-1] != '/' ):
+    if (folder[-1] != '/'):
         folder = folder + '/'
-    
+
     jobsLst = []
     files = os.listdir(folder)
     for i in range(len(files)):
-        
         f = files[i].strip()
-        
+
         keywords = {'infilename': folder + f}
-        jobsLst.append( {'func': readTextFromFile, 'args': keywords, 'misc': False} )
-    
+        jobsLst.append({'func': readTextFromFile, 'args': keywords, 'misc': False})
+
     resLst = parallelTask(jobsLst, threadCount=threadCount)
     for res in resLst:
-        
         res['text'] = res.pop('output')
 
         del res['input']['misc']
@@ -698,24 +611,25 @@ def parallelGetTxt(folder, threadCount=5):
 
     return resLst
 
+
 def sequentialGetTxt(folder):
-    
     folder = folder.strip()
-    if( folder == '' ):
+    if (folder == ''):
         return []
 
-    if( folder[-1] != '/' ):
+    if (folder[-1] != '/'):
         folder = folder + '/'
-    
+
     resLst = []
     files = os.listdir(folder)
-    
+
     for i in range(len(files)):
         resLst.append({
-            'text': readTextFromFile( folder + files[i].strip() )
+            'text': readTextFromFile(folder + files[i].strip())
         })
 
     return resLst
+
 
 def getColorTxt(txt, ansiCode='91m'):
     return '\033[' + ansiCode + '{}\033[00m'.format(txt)
