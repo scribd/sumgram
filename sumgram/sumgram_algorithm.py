@@ -751,10 +751,6 @@ def rank_mltwd_proper_nouns(ngram, ngram_toks, sentences, params=None):
     return final_multi_word_proper_noun
 
 
-
-
-
-
 def pos_glue_split_ngrams(top_ngrams, k, pos_glue_split_ngrams_coeff, ranked_multi_word_proper_nouns, params):
     stopwords = get_dual_stopwords(params['add_stopwords'])
     multi_word_proper_noun_dedup_set = set()  # it's possible for different ngrams to resolve to the same multi-word proper noun so deduplicate favoring higher ranked top_ngrams
