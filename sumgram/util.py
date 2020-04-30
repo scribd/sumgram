@@ -477,7 +477,16 @@ def readTextFromFilesRecursive(files, addDetails=True, curDepth=0, maxDepth=0):
     return result
 
 
-def change_format(nlp_docs):
+def merge_all_chunks(nlp_docs):
+    full_text = ""
+    all_sentences = []
+    for doc in nlp_docs:
+        full_text += str(doc)
+        all_sentences += format_sentences(doc)
+    return {'text': full_text, 'sentences': all_sentences}
+
+
+def format_sentences(nlp_doc):
     sentences = []
 
     def create_tok_obj(token):
@@ -495,10 +504,10 @@ def change_format(nlp_docs):
             sent_obj.setdefault('tokens', []).append(create_tok_obj(token))
         return sent_obj
 
-    for sent in nlp_docs.sents:
+    for sent in nlp_doc.sents:
         sentences.append(create_sent_obj(sent))
 
-    return {'text': str(nlp_docs), 'sentences': sentences}
+    return sentences
 
 
 def overlapFor2Sets(firstSet, secondSet):

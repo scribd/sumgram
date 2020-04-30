@@ -11,7 +11,7 @@ logger = logging.getLogger('sumGram.sumgram')
 
 
 def get_dual_stopwords(add_stopwords):
-    return add_stopwords | getStopwordsSet()
+    return set(add_stopwords) | getStopwordsSet()
 
 
 def bifurcate_stopwords(add_stopwords):
@@ -341,7 +341,7 @@ def extract_proper_nouns(sent_toks, container):
         CC: Coordinating conjunction
         IN: Preposition or subordinating conjunction
 
-        The goal here is to extract multi-word proper nouns. E.g., 
+        The goal here is to extract multi-word proper nouns. E.g.,
             "Hurricane harvey" (NNP NNP)
             "Centers for Disease Control" (NNP IN NNP NNP)
             "Federal Emergency Management Agency" (NNP NNP NNP NNP)
@@ -448,8 +448,8 @@ def rank_proper_nouns(multi_word_proper_nouns):
 def get_ngram_pos(toks, key_indx):
     '''
         Given ngram: 'convention center'
-        
-            found at index: 13 
+
+            found at index: 13
             in this sentence: at the brown convention center
             sentence toks: ['at', the', 'brown', 'convention', 'center']
 
@@ -751,6 +751,10 @@ def rank_mltwd_proper_nouns(ngram, ngram_toks, sentences, params=None):
     return final_multi_word_proper_noun
 
 
+
+
+
+
 def pos_glue_split_ngrams(top_ngrams, k, pos_glue_split_ngrams_coeff, ranked_multi_word_proper_nouns, params):
     stopwords = get_dual_stopwords(params['add_stopwords'])
     multi_word_proper_noun_dedup_set = set()  # it's possible for different ngrams to resolve to the same multi-word proper noun so deduplicate favoring higher ranked top_ngrams
@@ -885,7 +889,7 @@ def mvg_window_glue_split_ngrams(top_ngrams, k, all_doc_sentences, params=None):
         logger.debug('')
 
 
-def rm_empty_and_stopword_ngrams(top_ngrams, k, stopwords):
+def rm_empty_ngrams(top_ngrams, k):
     final_top_ngrams = []
 
     for i in range(len(top_ngrams)):
@@ -895,18 +899,6 @@ def rm_empty_and_stopword_ngrams(top_ngrams, k, stopwords):
 
         if (top_ngrams[i]['ngram'] == ''):
             continue
-
-        # check if top_ngrams[i]['ngram'] has stopword, if so skip - start
-        match_flag = False
-        for stpwrd in stopwords:
-
-            match_flag = is_ngram_subset(parent=top_ngrams[i]['ngram'], child=stpwrd, stopwords={})
-            if (match_flag):
-                break
-
-        if (match_flag is True):
-            continue
-        # check if top_ngrams[i]['ngram'] has stopword, if so skip - end
 
         final_top_ngrams.append(top_ngrams[i])
 
@@ -972,10 +964,6 @@ def rm_subset_top_ngrams(top_ngrams, k, rm_subset_top_ngrams_coeff, params):
                                 'cur_freq': top_ngrams[parent_indx]['term_freq'],
                                 'annotator': 'subset'
                             }
-
-                            if ('sumgram_history' in top_ngrams[parent_indx]):
-                                # this parent has a history
-                                new_ngram_dct['cur_ngram_sumgram_history'] = top_ngrams[parent_indx]['sumgram_history']
 
                             top_ngrams[child_indx].setdefault('sumgram_history', [])
                             top_ngrams[child_indx]['sumgram_history'].append(new_ngram_dct)
@@ -1256,17 +1244,15 @@ def get_top_sumgrams(nlp_docs, n=2, params=None):
 
     report = {}
 
-    if len(nlp_docs) == 0:
+    if len(list(nlp_docs)) == 0:
         return report
 
     if (n < 1):
         n = 1
 
     params = get_default_args(params)
-    params.setdefault('stopwords_sep', ',')
 
     params['state'] = {}
-    params['add_stopwords'] = get_user_stopwords(params['add_stopwords'], params['stopwords_sep'])
     params.setdefault('binary_tf_flag',
                       True)  # Multiple occurrence of term T in a document counts as 1, TF = total number of times term appears in collection
 
@@ -1274,7 +1260,7 @@ def get_top_sumgrams(nlp_docs, n=2, params=None):
 
     # parallel_nlp_add_sents(doc_dct_lst, params)
 
-    doc_dct_lst = [change_format(nlp_docs)]
+    doc_dct_lst = nlp_docs
 
     doc_lst = []
     all_doc_sentences = {}
@@ -1352,7 +1338,7 @@ def get_top_sumgrams(nlp_docs, n=2, params=None):
         print('\ntop ngrams after removing subset phrases:')
         print_top_ngrams(n, top_ngrams, params['top_sumgram_count'], params=params)
 
-    top_ngrams = rm_empty_and_stopword_ngrams(top_ngrams, params['top_sumgram_count'] * 2, params['add_stopwords'])
+    top_ngrams = rm_empty_ngrams(top_ngrams, params['top_sumgram_count'] * 2)
     doc_id_new_doc_indx_map = {}
     if (params['no_rank_docs'] == False):
         report['ranked_docs'], doc_id_new_doc_indx_map = get_ranked_docs(top_ngrams, doc_dct_lst)
@@ -1592,7 +1578,7 @@ from sumgram.util import getColorTxt
 from sumgram.util import getStopwordsSet
 from sumgram.util import genericErrorInfo
 from sumgram.util import isMatchInOrder
-from sumgram.util import change_format
+from sumgram.util import merge_all_chunks
 from sumgram.util import overlapFor2Sets
 from sumgram.util import parallelTask
 from sumgram.util import phraseTokenizer
